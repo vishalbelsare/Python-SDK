@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name='stocknotebridge',
-version='3.1.1',
+version='3.2.0',
 description='official python library for Stocknote APIs',
 url='https://github.com/samco-sdk/Python-SDK',
 install_requires=['future', 'requests','websocket-client','six','pandas'],
