@@ -39,7 +39,7 @@ if __name__ == "__main__":
 
     if not result.get("matches"):
         print(
-            f"WARNING: This host's egress IP {result.get('srcIp')} is not "
+            f"WARNING: This host's source IP {result.get('srcIp')} is not "
             f"registered. Order endpoints will reject this host with HTTP 403. "
             f"Update your registered IP via the Web Dashboard → Static IPs.",
             file=sys.stderr,

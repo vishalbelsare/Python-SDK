@@ -89,7 +89,7 @@ In every case: edit the placeholder constants at the top of the file, then `pyth
 You probably pasted the plaintext value instead of the AES-encrypted form, or the value is from a different environment. Go to **Web Dashboard → API Keys → Reveal Secret** and copy the encrypted string as-is.
 
 **`HTTP 403 — The IP is not the registered static IP`**
-Your host's egress IP is not in your allowlist. Run `python whoami.py` from the same host to see the exact IP our server sees, then update your registered IPs at [Web Dashboard → Static IPs](https://tradeapi.samco.in/app/static-ips). Note that `/ip/whoami` itself does not require an IP match.
+Your host's source IP is not in your allowlist. Run `python whoami.py` from the same host to see the exact IP our server sees, then update your registered IPs at [Web Dashboard → Static IPs](https://tradeapi.samco.in/app/static-ips). Note that `/ip/whoami` itself does not require an IP match.
 
 **`401 — Unauthorized. Session token is mandatory.`**
 You forgot to replace `<SESSION_TOKEN>` in the file, or the token has expired (it is valid only until 08:00 IST the next day). Re-run `session_token.py` to mint a fresh one.
