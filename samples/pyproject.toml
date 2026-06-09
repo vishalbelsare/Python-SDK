@@ -1,0 +1,56 @@
+[project]
+name = "samco-trade-api-samples"
+version = "3.2.0"
+description = "Runnable Python samples for the SAMCO Trade API v3.2 endpoints."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.8"
+authors = [{ name = "Samco Securities Limited" }]
+keywords = ["samco", "trade-api", "trading", "samples", "stocknote"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Intended Audience :: Developers",
+  "Topic :: Office/Business :: Financial :: Investment",
+]
+dependencies = [
+  "requests>=2.32.0",
+  "websocket-client>=1.7.0",
+  "python-dotenv>=1.0.0",
+  "stocknotebridge>=3.2.0",
+]
+
+[project.urls]
+Documentation = "https://docs-tradeapi.samco.in"
+"Release Notes" = "https://docs-tradeapi.samco.in/release-notes/v3.2.0"
+
+[tool.setuptools]
+py-modules = [
+  "config",
+  "session_token",
+  "whoami",
+  "get_quote",
+  "place_order",
+  "order_book",
+  "order_status",
+  "get_positions",
+  "get_holdings",
+  "streaming_quote",
+  "streaming_market_data",
+  "sample_client",
+  "quick_start",
+]
+
+[project.scripts]
+samco-session-token       = "session_token:main"
+samco-whoami              = "whoami:main"
+samco-get-quote           = "get_quote:main"
+samco-place-order         = "place_order:main"
+samco-order-book          = "order_book:main"
+samco-order-status        = "order_status:main"
+samco-get-positions       = "get_positions:main"
+samco-get-holdings        = "get_holdings:main"
+samco-stream-quote        = "streaming_quote:main"
+samco-stream-market-data  = "streaming_market_data:main"
+samco-sample-client       = "sample_client:main"
+samco-quick-start         = "quick_start:main"

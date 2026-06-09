@@ -7,14 +7,14 @@ matches. Does NOT consume your SEBI weekly IP-update slot.
 
 Reference: https://docs-tradeapi.samco.in/static-ip/whoami
 
-Install once: pip install requests
-Run:          python whoami.py
+Run: python whoami.py
 """
 
+import json
 import sys
 import requests
 
-BASE_URL = "https://tradeapi.samco.in"
+from config import BASE_URL, load_env, require_session_token
 
 
 def whoami(session_token: str) -> dict:
@@ -26,22 +26,22 @@ def whoami(session_token: str) -> dict:
     return requests.get(f"{BASE_URL}/ip/whoami", headers=headers).json()
 
 
-if __name__ == "__main__":
-    SESSION_TOKEN = "<SESSION_TOKEN>"
+def main() -> None:
+    load_env()
+    token = require_session_token()
 
-    result = whoami(SESSION_TOKEN)
-
-    print("srcIp:       ", result.get("srcIp"))
-    print("primaryIp:   ", result.get("primaryIp"))
-    print("secondaryIp: ", result.get("secondaryIp"))
-    print("matches:     ", result.get("matches"))
-    print("matchedAs:   ", result.get("matchedAs"))
+    result = whoami(token)
+    print(json.dumps(result, indent=2))
 
     if not result.get("matches"):
         print(
             f"WARNING: This host's source IP {result.get('srcIp')} is not "
-            f"registered. Order endpoints will reject this host with HTTP 403. "
-            f"Update your registered IP via the Web Dashboard → Static IPs.",
+            "registered. Order endpoints will reject this host with HTTP 403. "
+            "Update your registered IP via the Web Dashboard → Static IPs.",
             file=sys.stderr,
         )
-        sys.exit(1)
+        sys.exit(2)
+
+
+if __name__ == "__main__":
+    main()

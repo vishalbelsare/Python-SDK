@@ -6,13 +6,14 @@ OHLC, top bids/asks, circuit limits, etc.
 
 Reference: https://docs-tradeapi.samco.in/quote/get-quote
 
-Install once: pip install requests
-Run:          python get_quote.py
+Run: python get_quote.py
 """
 
+import json
+import os
 import requests
 
-BASE_URL = "https://tradeapi.samco.in"
+from config import BASE_URL, load_env, require_session_token
 
 
 def get_quote(session_token: str, symbol_name: str, exchange: str = "NSE") -> dict:
@@ -27,31 +28,19 @@ def get_quote(session_token: str, symbol_name: str, exchange: str = "NSE") -> di
     payload = r.json()
     if payload.get("status") != "Success":
         raise RuntimeError(f"Get quote failed: {payload.get('statusMessage')}")
-    return payload["quoteDetails"]
+    return payload
+
+
+def main() -> None:
+    load_env()
+    token = require_session_token()
+
+    symbol = os.environ.get("SAMCO_QUOTE_SYMBOL", "SBIN")
+    exchange = os.environ.get("SAMCO_QUOTE_EXCHANGE", "NSE")
+
+    result = get_quote(token, symbol, exchange)
+    print(json.dumps(result, indent=2))
 
 
 if __name__ == "__main__":
-    SESSION_TOKEN = "<SESSION_TOKEN>"
-
-    quote = get_quote(SESSION_TOKEN, "ASIANPAINT24APR2760PE", "NFO")
-
-    print("symbol:        ", quote["tradingSymbol"])
-    print("LTP:           ", quote["lastTradedPrice"])
-    print("previousClose: ", quote["previousClose"])
-    print(
-        "change:        ",
-        quote["changeValue"],
-        f"({quote['changePercentage']}%)",
-    )
-    print(
-        "OHLC:          ",
-        quote["openValue"],
-        quote["highValue"],
-        quote["lowValue"],
-        quote["closeValue"],
-    )
-
-    best_bid = (quote.get("bestBids") or [{}])[0]
-    best_ask = (quote.get("bestAsks") or [{}])[0]
-    print("best bid:      ", best_bid.get("price"), "x", best_bid.get("quantity"))
-    print("best ask:      ", best_ask.get("price"), "x", best_ask.get("quantity"))
+    main()

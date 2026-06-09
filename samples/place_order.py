@@ -9,17 +9,16 @@ running.
 
 Reference: https://docs-tradeapi.samco.in/order/place-order
 
-Install once: pip install requests
-Run:          python place_order.py
+Run: python place_order.py
 """
 
 import json
 import requests
 
-BASE_URL = "https://tradeapi.samco.in"
+from config import BASE_URL, load_env, require_session_token
 
 
-def place_limit_order(session_token: str, body: dict) -> dict:
+def place_order(session_token: str, body: dict) -> dict:
     headers = {
         "Content-Type": "application/json",
         "Accept": "application/json",
@@ -36,26 +35,27 @@ def place_limit_order(session_token: str, body: dict) -> dict:
     return payload
 
 
+DEFAULT_ORDER = {
+    "symbolName": "IDEA",
+    "exchange": "NSE",
+    "transactionType": "BUY",
+    "orderType": "L",
+    "quantity": "1",
+    "disclosedQuantity": "1",
+    "orderValidity": "DAY",
+    "productType": "CNC",
+    "afterMarketOrderFlag": "NO",
+    "price": "13.40",
+}
+
+
+def main() -> None:
+    load_env()
+    token = require_session_token()
+
+    result = place_order(token, DEFAULT_ORDER)
+    print(json.dumps(result, indent=2))
+
+
 if __name__ == "__main__":
-    SESSION_TOKEN = "<SESSION_TOKEN>"
-
-    limit_order = {
-        "symbolName": "IDEA",
-        "exchange": "NSE",
-        "transactionType": "BUY",
-        "orderType": "L",                # LIMIT
-        "quantity": "1",
-        "disclosedQuantity": "1",
-        "orderValidity": "DAY",          # or "IOC"
-        "productType": "CNC",            # or "MIS" / "NRML"
-        "afterMarketOrderFlag": "NO",
-        "price": "13.40",                # required for L
-    }
-
-    result = place_limit_order(SESSION_TOKEN, limit_order)
-
-    print("orderNumber:         ", result["orderNumber"])
-    print("exchangeOrderStatus: ", result["exchangeOrderStatus"])
-    print("tradingSymbol:       ", result["orderDetails"]["tradingSymbol"])
-    print("orderPrice:          ", result["orderDetails"]["orderPrice"])
-    print("orderTime:           ", result["orderDetails"]["orderTime"])
+    main()

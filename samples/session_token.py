@@ -7,21 +7,17 @@ API Key + API Secret. Captures the returned JWT and reuses it as the
 
 Reference: https://docs-tradeapi.samco.in/session/generate-token
 
-Install once: pip install requests
-Run:          python session_token.py
+Run: python session_token.py
 """
 
 import json
 import requests
 
-BASE_URL = "https://tradeapi.samco.in"
+from config import BASE_URL, load_env, require_real_credentials
 
 
-def generate_session_token(api_key: str, api_secret: str) -> dict:
-    headers = {
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-    }
+def generate_session_token(api_key: str, api_secret: str) -> str:
+    headers = {"Content-Type": "application/json", "Accept": "application/json"}
     body = {"apiKey": api_key, "apiSecret": api_secret}
 
     r = requests.post(
@@ -32,30 +28,20 @@ def generate_session_token(api_key: str, api_secret: str) -> dict:
     payload = r.json()
     if payload.get("status") != "Success":
         raise RuntimeError(f"Session token failed: {payload.get('statusMessage')}")
-    return payload
+    return payload["sessionToken"]
 
 
-def get_holdings(session_token: str) -> dict:
-    # Reuse the JWT as `x-session-token` on subsequent Trade API calls.
-    headers = {
-        "Accept": "application/json",
-        "x-session-token": session_token,
-    }
-    return requests.get(f"{BASE_URL}/holding/getHolding", headers=headers).json()
+def main() -> None:
+    load_env()
+    api_key, api_secret = require_real_credentials()
+
+    token = generate_session_token(api_key, api_secret)
+
+    print("JWT acquired (first 24 chars):", token[:24], "…")
+    print()
+    print("Paste this value into SAMCO_SESSION_TOKEN in samples/.env.")
+    print("The token is valid until 08:00 IST the next day.")
 
 
 if __name__ == "__main__":
-    session = generate_session_token(
-        "<AES_ENCRYPTED_API_KEY>",
-        "<AES_ENCRYPTED_API_SECRET>",
-    )
-
-    print("accountID:    ", session["accountID"])
-    print("srcIp:        ", session["srcIp"])
-    print("primaryIp:    ", session["primaryIp"])
-    print("secondaryIp:  ", session["secondaryIp"])
-    print("sessionToken: ", session["sessionToken"][:24], "...")
-
-    # The token is valid until 08:00 IST the next day.
-    holdings = get_holdings(session["sessionToken"])
-    print("Holdings:", holdings)
+    main()
