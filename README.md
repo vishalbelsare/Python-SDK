@@ -7,6 +7,32 @@ The primary purpose of this Python Bridge is to help our customers quickly creat
 
 Please refer the below documentation for details on installation, set up and API specific sample code/request-responses to create your own Python client code.
 
+---
+
+> ### 🆕 What's new in v3.2.0
+>
+> - **Generate Session Token (Direct)** — `POST /session/token`, authenticates with your OAuth app's **API Key + API Secret** (no OTP/password flow). See [v3.2 Sample Code](#v32-apis--sample-client-code).
+> - **OAuth 2.1 Authorization-Code Flow** — browser-based delegated login for third-party apps. See [v3.2 Sample Code](#v32-apis--sample-client-code).
+> - **Samco Trade API Web Dashboard** — create OAuth apps, manage API Key / API Secret, and register Static IPs at <https://tradeapi.samco.in/app/login>.
+> - **`GET /ip/whoami`** — read-only IP diagnostic to debug `403 — The IP is not the registered static IP`.
+> - Full release notes: <https://docs-tradeapi.samco.in/release-notes/v3.2.0>.
+
+> ### ⚠ Deprecated in v3.2.0
+>
+> The following legacy endpoints continue to work and the SDK still wraps them, but **new integrations should migrate** to the v3.2 endpoints (see "What's new" above). The corresponding sections below are tagged with deprecation banners.
+>
+> | Deprecated API | SDK method | Replacement |
+> |---|---|---|
+> | `/login` | `samco.login(...)` | Session Token (Direct) or OAuth 2.1 |
+> | `/otp/generateOtp` | `samco.generate_otp(...)` | Web Dashboard → API Keys |
+> | `/otp/secretKeyGenerator` | `samco.generate_secret_api_key(...)` | Web Dashboard → API Keys |
+> | `/accessToken/token` | `samco.generate_access_token(...)` | `POST /session/token` |
+> | `/ip/ipRegistration` | `samco.ip_registration(...)` | Web Dashboard → Static IPs |
+> | `/ip/ipUpdate` | `samco.ip_update(...)` | Web Dashboard → Static IPs |
+> | `/oauth/createApp` | — | Web Dashboard → API Keys |
+
+---
+
 ## Installation
 
 This module is installed via pip:
@@ -35,12 +61,11 @@ pip --version
 ```
 Also, you need the following modules:
 
-* `future`
-* `requests`
-* `websocket`
-* `websocket_client`
+* `requests` (>= 2.32) — REST calls
+* `websocket-client` (>= 1.7) — streaming
+* `urllib3`, `certifi`, `six`, `python-dateutil`, `pandas`, `numpy`
 
-These modules can also be installed using `pip`
+These modules can also be installed using `pip` (see [`samples/requirements.txt`](./samples/requirements.txt), which lives next to the runnable sample clients).
 
 ## Getting started with API
 
@@ -50,12 +75,25 @@ Stocknote python SDK is a python client library for easily accessing the stockno
 For specific details on parameters passed on the request, and details about API response, please refer our [Stocknote API documentation](https://docs-tradeapi.samco.in).
 
 ## List of API
-* [IpRegistration](#ipregistration)
-* [IPUpdate](#ipupdate)
-* [GenerateOtp](#generateotp)
-* [GenerateSecretAPIKey](#generatesecretapikey)
-* [GenerateAccessToken](#generateaccesstoken)
-* [Login](#login)
+
+**v3.2 (Recommended)**
+* [Generate Session Token (Direct) — `POST /session/token`](#generate-session-token-direct)
+* [OAuth 2.1 Authorization-Code Flow](#oauth-21-authorization-code-flow)
+* [IP Who Am I — `GET /ip/whoami`](#ip-who-am-i)
+* [Get Quote — `GET /quote/getQuote`](#get-quote-v32-sample)
+* [Place Order (LIMIT) — `POST /order/placeOrder`](#place-order-limit-v32-sample)
+* [Streaming Market Data — `wss://stream.samco.in`](#streaming-market-data-v32-sample)
+* [Streaming Quote Data — `wss://stream.samco.in`](#streaming-quote-data-v32-sample)
+
+**Legacy / Deprecated**
+* [IpRegistration](#ipregistration) ⚠
+* [IPUpdate](#ipupdate) ⚠
+* [GenerateOtp](#generateotp) ⚠
+* [GenerateSecretAPIKey](#generatesecretapikey) ⚠
+* [GenerateAccessToken](#generateaccesstoken) ⚠
+* [Login](#login) ⚠
+
+**SDK methods**
 * [SearchEquityDerivative](#searchequityderivative)
 * [SpanMargin](#spanmargin)
 * [Quote](#quote)
@@ -91,6 +129,404 @@ For specific details on parameters passed on the request, and details about API 
 * [Logout](#logout)
 
 
+## v3.2 APIs — Sample Client Code
+
+The v3.2 endpoints below are not yet wrapped by `snapi_py_client`. Until SDK helpers ship, call them directly with `requests` / `websocket-client` using the samples below. All samples are runnable Python 3.8+ and reproduce the exact payloads documented in the [v3.2 API reference](https://docs-tradeapi.samco.in/).
+
+> Replace placeholder values (`<AES_ENCRYPTED_API_KEY>`, `<AES_ENCRYPTED_API_SECRET>`, `<SESSION_TOKEN>`, etc.) with real values from the [Web Dashboard](https://tradeapi.samco.in/app/login) before running.
+
+---
+
+### Generate Session Token (Direct)
+
+<a name="generate-session-token-direct"></a>
+
+`POST /session/token` — direct, headless authentication using your OAuth app's **API Key + API Secret**. Returns a JWT `sessionToken` to be sent as `x-session-token` on subsequent calls. Token is valid until **08:00 IST the next day**.
+
+```python
+import json
+import requests
+
+BASE_URL = "https://tradeapi.samco.in"
+
+headers = {
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+}
+
+requestBody = {
+    "apiKey":    "<AES_ENCRYPTED_API_KEY>",
+    "apiSecret": "<AES_ENCRYPTED_API_SECRET>",
+}
+
+r = requests.post(f"{BASE_URL}/session/token",
+                  data=json.dumps(requestBody),
+                  headers=headers)
+payload = r.json()
+print(payload)
+
+SESSION_TOKEN = payload["sessionToken"]  # use on subsequent calls
+```
+
+Sample response:
+
+```json
+{
+    "serverTime": "29/01/26 10:46:06",
+    "msgId": "d5f083f3-1b04-4b97-9385-1e578fdfeb7a",
+    "status": "Success",
+    "statusMessage": "Session token generated successfully",
+    "sessionToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "tokenId": "550e8400-e29b-41d4-a716-446655440000",
+    "accountID": "DV99999",
+    "accountName": "JOHN DOE",
+    "exchangeList": ["NSE", "BSE", "NFO", "MCX"],
+    "orderTypeList": ["L", "MKT", "SL", "SL-M"],
+    "productList": ["MIS", "CNC", "NRML"],
+    "srcIp": "203.0.113.10",
+    "primaryIp": "203.0.113.10",
+    "secondaryIp": "203.0.113.11"
+}
+```
+
+---
+
+### OAuth 2.1 Authorization-Code Flow
+
+<a name="oauth-21-authorization-code-flow"></a>
+
+For third-party apps signing in end-users through a browser. The browser redirect to `https://tradeapi.samco.in/app/oauth/authorize?api_key=...&redirect_url=...&state=...` is out of band; once the user lands on your callback with `?code=...&state=...`, your **backend** exchanges the code at `POST /oauth/token` (valid for 10 minutes, single use). The returned `access_token` is used as `x-session-token` on all Trade API calls.
+
+```python
+import requests
+from flask import request, session, redirect, abort
+
+BASE_URL = "https://tradeapi.samco.in"
+
+# Inside your /callback handler:
+@app.route("/callback")
+def callback():
+    # 1. CSRF: verify state matches what you generated at step 1
+    if request.args.get("state") != session.pop("oauth_state", None):
+        abort(400, "Invalid state")
+
+    # 2. User cancelled or validation failed
+    if request.args.get("error"):
+        return f"Login failed: {request.args.get('errorMessage')}", 401
+
+    # 3. Exchange the auth code for an access token (server-to-server)
+    r = requests.post(f"{BASE_URL}/oauth/token", json={
+        "grant_type": "authorization_code",
+        "code":       request.args["code"],
+    }).json()
+
+    if r.get("status") != "Success":
+        return "Token exchange failed", 401
+
+    d = r["data"]
+    session["samco_access_token"]  = d["access_token"]   # use as x-session-token
+    session["samco_refresh_token"] = d["refresh_token"]  # 7-day rotation
+    session["samco_session_id"]    = d["session_id"]
+    return redirect("/dashboard")
+```
+
+To refresh later (before the 24-hour `access_token` expires), POST to the same endpoint with `grant_type=refresh_token` and the saved `refresh_token`. The old refresh token is invalidated on issuance — always persist the new pair atomically.
+
+```python
+r = requests.post(f"{BASE_URL}/oauth/token", json={
+    "grant_type":    "refresh_token",
+    "refresh_token": "<REFRESH_TOKEN>",
+}).json()
+```
+
+To revoke (logout):
+
+```python
+requests.post(f"{BASE_URL}/oauth/revoke", json={
+    "token":      "<ACCESS_TOKEN_OR_REFRESH_TOKEN>",
+    "token_type": "access_token",
+})
+```
+
+---
+
+### IP Who Am I
+
+<a name="ip-who-am-i"></a>
+
+`GET /ip/whoami` — read-only diagnostic that returns the source IP our server sees, plus your registered `PRIMARY` / `SECONDARY` IPs and whether the source matches. Does **not** consume your SEBI weekly IP-update slot.
+
+```python
+import requests
+
+BASE_URL = "https://tradeapi.samco.in"
+SESSION_TOKEN = "<SESSION_TOKEN>"
+
+headers = {
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+    "x-session-token": SESSION_TOKEN,
+}
+
+r = requests.get(f"{BASE_URL}/ip/whoami", headers=headers)
+print(r.json())
+```
+
+Sample response:
+
+```json
+{
+    "serverTime": "03/06/26 10:46:06",
+    "msgId": "d5f083f3-1b04-4b97-9385-1e578fdfeb7a",
+    "status": "Success",
+    "statusMessage": "Calling from registered PRIMARY IP (203.0.113.10).",
+    "srcIp": "203.0.113.10",
+    "primaryIp": "203.0.113.10",
+    "secondaryIp": "203.0.113.11",
+    "matches": true,
+    "matchedAs": "PRIMARY"
+}
+```
+
+---
+
+### Get Quote (v3.2 sample)
+
+<a name="get-quote-v32-sample"></a>
+
+`GET /quote/getQuote` — quote details for an equity/derivative scrip, called with the `x-session-token` issued in the steps above.
+
+```python
+import requests
+
+BASE_URL = "https://tradeapi.samco.in"
+SESSION_TOKEN = "<SESSION_TOKEN>"
+
+headers = {
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+    "x-session-token": SESSION_TOKEN,
+}
+
+params = {
+    "symbolName": "ASIANPAINT24APR2760PE",
+    "exchange":   "NFO",
+}
+
+r = requests.get(f"{BASE_URL}/quote/getQuote", headers=headers, params=params)
+print(r.json())
+```
+
+Sample response (truncated):
+
+```json
+{
+    "serverTime": "04/04/24 15:47:05",
+    "status": "Success",
+    "statusMessage": "Quote details retrieved successfully",
+    "quoteDetails": {
+        "symbolName": "ASIANPAINT",
+        "tradingSymbol": "ASIANPAINT24APR2760PE",
+        "exchange": "NFO",
+        "lastTradedPrice": "09.95",
+        "previousClose": "14.7",
+        "changeValue": "-4.75",
+        "changePercentage": "-32.31",
+        "openValue": "13.2",
+        "highValue": "18.85",
+        "lowValue": "7.65",
+        "closeValue": "14.7"
+    }
+}
+```
+
+---
+
+### Place Order (LIMIT) (v3.2 sample)
+
+<a name="place-order-limit-v32-sample"></a>
+
+`POST /order/placeOrder` — places a LIMIT (`orderType=L`) order. `price` is required for LIMIT orders.
+
+> ⚠ **Live trading endpoint.** Successful calls affect real positions and balances. Samco does not provide a sandbox — validate every field before sending.
+
+```python
+import json
+import requests
+
+BASE_URL = "https://tradeapi.samco.in"
+SESSION_TOKEN = "<SESSION_TOKEN>"
+
+headers = {
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+    "x-session-token": SESSION_TOKEN,
+}
+
+requestBody = {
+    "symbolName":           "IDEA",
+    "exchange":             "NSE",
+    "transactionType":      "BUY",
+    "orderType":            "L",
+    "quantity":             "1",
+    "disclosedQuantity":    "1",
+    "orderValidity":        "DAY",
+    "productType":          "CNC",
+    "afterMarketOrderFlag": "NO",
+    "price":                "13.40",
+}
+
+r = requests.post(f"{BASE_URL}/order/placeOrder",
+                  data=json.dumps(requestBody),
+                  headers=headers)
+print(r.json())
+```
+
+Sample response:
+
+```json
+{
+    "serverTime": "22/05/24 17:17:15",
+    "msgId": "dc1a9957-8bee-4895-9b7e-8e5e5f627a1a",
+    "status": "Success",
+    "orderNumber": "240522000162545",
+    "statusMessage": "CNC Order request placed successfully",
+    "exchangeOrderStatus": "PENDING",
+    "rejectionReason": "",
+    "orderDetails": {
+        "pendingQuantity": 1,
+        "avgExecutionPrice": "0.00",
+        "tradingSymbol": "IDEA-EQ",
+        "exchange": "NSE",
+        "totalQuantity": 1,
+        "transactionType": "B",
+        "productType": "CNC",
+        "orderType": "L",
+        "orderPrice": "13.40",
+        "orderValidity": "DAY",
+        "orderTime": "22/05/2024 17:17:15"
+    }
+}
+```
+
+---
+
+### Streaming Market Data (v3.2 sample)
+
+<a name="streaming-market-data-v32-sample"></a>
+
+`wss://stream.samco.in` with `streaming_type: "quote2"` — continuous market-depth frames (5 levels of bids/asks). Requires `pip install websocket-client`.
+
+```python
+# Install once: pip install websocket-client
+import json
+import websocket
+
+SESSION_TOKEN = "<SESSION_TOKEN>"
+
+def on_open(ws):
+    subscribe = {
+        "request": {
+            "streaming_type": "quote2",
+            "data": {"symbols": [{"symbol": "3880_NSE"}, {"symbol": "30125_NSE"}]},
+            "request_type": "subscribe",
+            "response_format": "json",
+        }
+    }
+    ws.send(json.dumps(subscribe))
+
+def on_message(ws, msg):
+    print("Market data ::", msg)
+
+def on_error(ws, error):
+    print(error)
+
+def on_close(ws, code, reason):
+    print("Connection closed")
+
+ws = websocket.WebSocketApp(
+    "wss://stream.samco.in",
+    header={"x-session-token": SESSION_TOKEN},
+    on_open=on_open,
+    on_message=on_message,
+    on_error=on_error,
+    on_close=on_close,
+)
+ws.run_forever()
+```
+
+To stop, send the same frame with `"request_type": "unsubscribe"`.
+
+---
+
+### Streaming Quote Data (v3.2 sample)
+
+<a name="streaming-quote-data-v32-sample"></a>
+
+`wss://stream.samco.in` with `streaming_type: "quote"` — continuous quote stream (LTP, OHLC, OI, volume, top bid/ask). Requires `pip install websocket-client`.
+
+```python
+# Install once: pip install websocket-client
+import json
+import websocket
+
+SESSION_TOKEN = "<SESSION_TOKEN>"
+
+def on_open(ws):
+    subscribe = {
+        "request": {
+            "streaming_type": "quote",
+            "data": {"symbols": [{"symbol": "532826_BSE"}]},
+            "request_type": "subscribe",
+            "response_format": "json",
+        }
+    }
+    ws.send(json.dumps(subscribe))
+
+def on_message(ws, msg):
+    print("Quote ::", msg)
+
+def on_error(ws, error):
+    print(error)
+
+def on_close(ws, code, reason):
+    print("Connection closed")
+
+ws = websocket.WebSocketApp(
+    "wss://stream.samco.in",
+    header={"x-session-token": SESSION_TOKEN},
+    on_open=on_open,
+    on_message=on_message,
+    on_error=on_error,
+    on_close=on_close,
+)
+ws.run_forever()
+```
+
+Sample frame:
+
+```json
+{
+  "sym": "2885_NSE",
+  "aPr": "44561.00",
+  "bPr": "44554.00",
+  "aSz": "1",
+  "bSz": "1",
+  "avgPr": "44371.85",
+  "c": "44119.00",
+  "h": "44786.00",
+  "l": "43969.00",
+  "o": "44105.00",
+  "ch": "435.00"
+}
+```
+
+---
+
+> 💡 The snippets above are also available as standalone runnable files under [`samples/`](./samples). See [`samples/README.md`](./samples/README.md) for one-time setup (`pip install -r samples/requirements.txt`), how to obtain the `<SESSION_TOKEN>` placeholder, and a per-file run guide.
+
+---
+
 ## Using the API
 
 To access StockNote APIs, you need to import the SDK, generate an access token, login, and obtain a session token.
@@ -118,19 +554,24 @@ samco = StocknoteAPIPythonBridge()
 The following steps are required as a one-time setup:
 
 #### 3.1 Register Static IP
-Register your static IP using [IP Registration](#ipregistration) or update it using [IP Update](#ipupdate).
 
-#### 3.2 Generate OTP
-Generate an OTP using [Generate OTP](#generateotp).
+**v3.2 (recommended):** register and manage Static IPs from the [Web Dashboard → Static IPs](https://tradeapi.samco.in/app/static-ips) page. Use [`GET /ip/whoami`](#ip-who-am-i) from each backend host to confirm the source IP our server sees matches your registered allowlist.
 
-#### 3.3 Generate Secret API Key
-Use the OTP received in the previous step to generate your Secret API Key via [Generate Secret API Key](#generatesecretapikey).
+> ⚠ Deprecated in v3.2.0 — the legacy `samco.ip_registration(...)` / `samco.ip_update(...)` SDK methods (documented under [IP Registration](#ipregistration) / [IP Update](#ipupdate)) still work but will be removed in a future major release.
+
+#### 3.2 Obtain API Key + API Secret
+
+**v3.2 (recommended):** create an OAuth app in the [Web Dashboard → API Keys](https://tradeapi.samco.in/app/api-keys). The **API Key** is delivered to your registered email; the **API Secret** is shown **once** in the dashboard — copy it immediately and store it securely. Use these directly with [`POST /session/token`](#generate-session-token-direct).
+
+> ⚠ Deprecated in v3.2.0 — the legacy OTP-based [Generate OTP](#generateotp) → [Generate Secret API Key](#generatesecretapikey) → [Generate Access Token](#generateaccesstoken) flow still works but will be removed in a future major release.
 
 ---
 
 ### 4. Generate Access Token
 
 <a name="generateaccesstoken"></a>
+
+> ⚠ **Deprecated in API v3.2.0.** Migrate to [Generate Session Token (Direct)](#generate-session-token-direct) or [OAuth 2.1](#oauth-21-authorization-code-flow). This SDK method still ships in 3.x and continues to work against the legacy `/accessToken/token` endpoint.
 
 Use the `generate_access_token()` API to generate an access token.
 
@@ -173,6 +614,8 @@ print("Generate AccessToken Response:", accessTokenResponse)
 ### 5. Login and Set Session Token
 
 <a name="login"></a>
+
+> ⚠ **Deprecated in API v3.2.0.** Migrate to [Generate Session Token (Direct)](#generate-session-token-direct) or [OAuth 2.1](#oauth-21-authorization-code-flow). The legacy `/login` endpoint and this SDK method still ship in 3.x.
 
 Use the Login API to authenticate using the access token and generate a session token.
 
@@ -249,6 +692,8 @@ samco.set_session_token(
 
 ## GenerateOtp
 
+> ⚠ **Deprecated in API v3.2.0.** Obtain API Key + API Secret from the [Web Dashboard → API Keys](https://tradeapi.samco.in/app/api-keys) and authenticate with [Generate Session Token (Direct)](#generate-session-token-direct). This SDK method still ships in 3.x.
+
 The Generate Otp function `generate_otp()` should be used to start the process of getting a secret API key.When this API is called, a One-Time Password (OTP) is sent to the user’s registered mobile number and email ID. This OTP is required for the next step of API key generation.
 
 ## Parameters:
@@ -276,6 +721,8 @@ uid
 
 ## GenerateSecretAPIKey
 
+> ⚠ **Deprecated in API v3.2.0.** Use the [Web Dashboard → API Keys](https://tradeapi.samco.in/app/api-keys) to obtain your API Key + API Secret, then authenticate with [Generate Session Token (Direct)](#generate-session-token-direct). This SDK method still ships in 3.x.
+
 The Generate Secret API Key function `generate_secret_api_key()` should be used to generate a secret API key using a valid user ID and the OTP received from the Generate OTP API.Once the request is successful, the secret API key is sent to the user’s registered email ID
 
 ## Parameters:
@@ -301,6 +748,8 @@ uid,otp
 <a name="ipregistration"></a>
 
 ## IpRegistration
+
+> ⚠ **Deprecated in API v3.2.0.** Register Static IPs from the [Web Dashboard → Static IPs](https://tradeapi.samco.in/app/static-ips) page and verify with [`GET /ip/whoami`](#ip-who-am-i). This SDK method still ships in 3.x and continues to call the legacy `/ip/ipRegistration` endpoint.
 
 The Ip Registration function `ip_registration()` should be used to register the primary and secondary static IP addresses for a client. Once IPs are registered, the client can access the APIs only from these IP addresses.The IP address must be a valid IPv4 address.If a user tries to access the API from any other IP address, the request will be rejected with an error.
 
@@ -334,6 +783,8 @@ clientId,primaryIp,secondaryIp,password
 <a name="ipupdate"></a>
 
 ## IPUpdate
+
+> ⚠ **Deprecated in API v3.2.0.** Manage Static IPs from the [Web Dashboard → Static IPs](https://tradeapi.samco.in/app/static-ips) page. This SDK method still ships in 3.x and continues to call the legacy `/ip/ipUpdate` endpoint.
 
 The IP Update function `ip_update()` should be used to update the primary and/or secondary static IP addresses for a client. Once the IPs are updated, the client can access the APIs only from the newly registered IP addresses.A user is allowed to update the IP addresses only once per calendar week.The IP address must be a valid IPv4 address. If a user tries to access the API from any other IP address, the request will be rejected with an error.
 
