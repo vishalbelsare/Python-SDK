@@ -1351,7 +1351,7 @@ The PlaceOrder function `place_order()` can be used to place an equity/derivativ
 
 #### Parameters:
 ```python
-symbol_name,exchange,transactionType,orderType,price,quantity,disclosedQuantity,orderValidity,productType,marketProtection
+symbol_name,exchange,transactionType,orderType,price,quantity,disclosedQuantity,orderValidity,productType
 ```
 
 #### Sample PlaceOrder Request:
@@ -1466,7 +1466,7 @@ The PlaceOrderCO function `place_order_co()` can be used to place an equity/deri
 
 #### Parameters:
 ```python
-symbol_name,exchange,transactionType,orderType,price,quantity,disclosedQuantity,orderValidity,productType,marketProtection,triggerPrice
+symbol_name,exchange,transactionType,orderType,price,quantity,disclosedQuantity,orderValidity,productType,triggerPrice
 ```
 #### Sample PlaceOrderCO Request:
 
@@ -1522,7 +1522,7 @@ The ModifyOrder function `modify_order()` can be used to modify some attributes 
 
 #### Parameters:
 ```python
-orderType,quantity,disclosedQuantity,orderValidity,price,triggerPrice,parentOrderId,marketProtection
+orderType,quantity,disclosedQuantity,orderValidity,price,triggerPrice,parentOrderId
 ```
 
 #### Sample ModifyOrder Request:
