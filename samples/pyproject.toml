@@ -1,6 +1,6 @@
 [project]
 name = "samco-trade-api-samples"
-version = "3.2.0"
+version = "3.2.1"
 description = "Runnable Python samples for the SAMCO Trade API v3.2 endpoints."
 readme = "README.md"
 license = "MIT"
