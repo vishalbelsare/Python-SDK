@@ -3,65 +3,42 @@ wss://stream.samco.in   streaming_type: "quote"
 
 Continuous quote stream — LTP, OHLC, OI, top bid/ask, volume.
 
+Uses StocknoteAPIPythonBridge (stocknotebridge >= 3.2.2) so the v3.2
+streamer fix (TRD-1467) is exercised.
+
 Reference: https://docs-tradeapi.samco.in/streaming/streaming-quote-data
 
 Run: python streaming_quote.py
 """
 
-import json
 import signal
-import websocket
 
-from config import STREAM_URL, load_env, require_session_token
+from snapi_py_client.snapi_bridge import StocknoteAPIPythonBridge
 
-
-def _build_frame(symbols: list, request_type: str) -> dict:
-    return {
-        "request": {
-            "streaming_type": "quote",
-            "data": {"symbols": [{"symbol": s} for s in symbols]},
-            "request_type": request_type,
-            "response_format": "json",
-        }
-    }
+from config import load_env, require_session_token
 
 
-def stream_quotes(session_token: str, symbols: list) -> websocket.WebSocketApp:
-    """Open a quote stream and subscribe to `symbols`. Returns the WebSocketApp.
+def stream_quotes(session_token: str, symbols: list) -> StocknoteAPIPythonBridge:
+    """Configure a SnapiBridge for a quote stream subscribing to `symbols`.
 
-    The caller is responsible for driving the loop (e.g. `ws.run_forever()` in
-    a thread) and for calling `close_quote_stream(ws, symbols)` when done.
+    The caller drives the loop with `bridge.start_streaming()` (e.g. in a
+    thread) and calls `close_quote_stream(bridge, symbols)` when done.
     """
-
-    def on_open(ws):
-        print("Connected — sending subscribe frame")
-        ws.send(json.dumps(_build_frame(symbols, "subscribe")))
-
-    def on_message(_ws, msg):
-        print("Quote ::", msg)
-
-    def on_error(_ws, error):
-        print("WS error:", error)
-
-    def on_close(_ws, _code, _reason):
-        print("Connection closed")
-
-    return websocket.WebSocketApp(
-        STREAM_URL,
-        header={"x-session-token": session_token},
-        on_open=on_open,
-        on_message=on_message,
-        on_error=on_error,
-        on_close=on_close,
-    )
+    bridge = StocknoteAPIPythonBridge()
+    bridge.set_session_token(session_token)
+    bridge.set_streaming_data(symbols, StocknoteAPIPythonBridge.STREAMING_TYPE_QUOTE)
+    return bridge
 
 
-def close_quote_stream(ws: websocket.WebSocketApp, symbols: list) -> None:
+def close_quote_stream(bridge: StocknoteAPIPythonBridge, symbols: list) -> None:
     try:
-        ws.send(json.dumps(_build_frame(symbols, "unsubscribe")))
+        bridge.unsubscribe_quote(symbols)
     except Exception:
         pass
-    ws.close()
+    try:
+        bridge.ws.close()
+    except Exception:
+        pass
 
 
 def main() -> None:
@@ -69,13 +46,13 @@ def main() -> None:
     token = require_session_token()
 
     symbols = ["532826_BSE"]
-    ws_app = stream_quotes(token, symbols)
+    bridge = stream_quotes(token, symbols)
 
     def _sigint(_sig, _frame):
-        close_quote_stream(ws_app, symbols)
+        close_quote_stream(bridge, symbols)
 
     signal.signal(signal.SIGINT, _sigint)
-    ws_app.run_forever()
+    bridge.start_streaming()
 
 
 if __name__ == "__main__":
