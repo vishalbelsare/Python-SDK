@@ -1,10 +1,12 @@
 # SAMCO Trade API v3.2 — Python samples
 
 Runnable Python clients for the v3.2 endpoints documented in
-[`ta-api-docs`](https://docs-tradeapi.samco.in). Most samples are plain
-`requests` / `websocket-client` (no SDK dependency) so they read 1:1
-against the docs; `sample_client.py` is the same flow expressed through
-the published `stocknotebridge` (`snapi_py_client`) SDK.
+[`ta-api-docs`](https://docs-tradeapi.samco.in). REST samples are plain
+`requests` (no SDK dependency) so they read 1:1 against the docs.
+`streaming_quote.py` and `streaming_market_data.py` drive the websocket
+through the published `stocknotebridge` (`snapi_py_client`) SDK
+(>= 3.2.2 — see TRD-1467 streamer fix); `sample_client.py` is the
+full REST + streaming flow expressed through the same SDK.
 
 ## Install
 
@@ -71,8 +73,8 @@ SAMCO_RUN_STREAMING=false
 | `python order_status.py`                 | `GET /order/getOrderStatus`                | `order/get-order-status.md`                 |
 | `python get_positions.py`                | `GET /position/getPositions`               | `positions/get-positions.md`                |
 | `python get_holdings.py`                 | `GET /holding/getHoldings`                 | `holdings/get-holdings.md`                  |
-| `python streaming_quote.py`              | `wss://stream.samco.in` (`quote`)          | `streaming/streaming-quote-data.md`         |
-| `python streaming_market_data.py`        | `wss://stream.samco.in` (`quote2`, depth)  | `streaming/streaming-market-data.md`        |
+| `python streaming_quote.py`              | `wss://stream.samco.in` (`quote`) via SDK  | `streaming/streaming-quote-data.md`         |
+| `python streaming_market_data.py`        | `wss://stream.samco.in` (`quote2`, depth) via SDK | `streaming/streaming-market-data.md`  |
 | `python sample_client.py`                | End-to-end flow via `stocknotebridge` SDK  | (SDK walkthrough)                           |
 | `python quick_start.py`                  | Runs every sample above in sequence        | (mirrors Java `QuickStartSample`)           |
 

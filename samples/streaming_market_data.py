@@ -3,59 +3,37 @@ wss://stream.samco.in   streaming_type: "quote2"
 
 Continuous market-depth stream — 5 levels of bids/asks.
 
+Uses StocknoteAPIPythonBridge (stocknotebridge >= 3.2.2) so the v3.2
+streamer fix (TRD-1467) is exercised.
+
 Reference: https://docs-tradeapi.samco.in/streaming/streaming-market-data
 
 Run: python streaming_market_data.py
 """
 
-import json
 import signal
-import websocket
 
-from config import STREAM_URL, load_env, require_session_token
+from snapi_py_client.snapi_bridge import StocknoteAPIPythonBridge
 
-
-def _build_frame(symbols: list, request_type: str) -> dict:
-    return {
-        "request": {
-            "streaming_type": "quote2",
-            "data": {"symbols": [{"symbol": s} for s in symbols]},
-            "request_type": request_type,
-            "response_format": "json",
-        }
-    }
+from config import load_env, require_session_token
 
 
-def stream_market_data(session_token: str, symbols: list) -> websocket.WebSocketApp:
-    def on_open(ws):
-        print("Connected — sending subscribe frame")
-        ws.send(json.dumps(_build_frame(symbols, "subscribe")))
-
-    def on_message(_ws, msg):
-        print("Market data ::", msg)
-
-    def on_error(_ws, error):
-        print("WS error:", error)
-
-    def on_close(_ws, _code, _reason):
-        print("Connection closed")
-
-    return websocket.WebSocketApp(
-        STREAM_URL,
-        header={"x-session-token": session_token},
-        on_open=on_open,
-        on_message=on_message,
-        on_error=on_error,
-        on_close=on_close,
-    )
+def stream_market_data(session_token: str, symbols: list) -> StocknoteAPIPythonBridge:
+    bridge = StocknoteAPIPythonBridge()
+    bridge.set_session_token(session_token)
+    bridge.set_streaming_data(symbols, StocknoteAPIPythonBridge.STREAMING_TYPE_MARKET_DEPTH)
+    return bridge
 
 
-def close_market_data_stream(ws: websocket.WebSocketApp, symbols: list) -> None:
+def close_market_data_stream(bridge: StocknoteAPIPythonBridge, symbols: list) -> None:
     try:
-        ws.send(json.dumps(_build_frame(symbols, "unsubscribe")))
+        bridge.unsubscribe_market_data(symbols)
     except Exception:
         pass
-    ws.close()
+    try:
+        bridge.ws.close()
+    except Exception:
+        pass
 
 
 def main() -> None:
@@ -63,13 +41,13 @@ def main() -> None:
     token = require_session_token()
 
     symbols = ["3880_NSE", "30125_NSE"]
-    ws_app = stream_market_data(token, symbols)
+    bridge = stream_market_data(token, symbols)
 
     def _sigint(_sig, _frame):
-        close_market_data_stream(ws_app, symbols)
+        close_market_data_stream(bridge, symbols)
 
     signal.signal(signal.SIGINT, _sigint)
-    ws_app.run_forever()
+    bridge.start_streaming()
 
 
 if __name__ == "__main__":

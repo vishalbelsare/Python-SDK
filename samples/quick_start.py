@@ -39,17 +39,18 @@ def run_stream(title: str, open_fn, close_fn, duration_s: int) -> None:
     section(title)
     print(f"[{title}] streaming for {duration_s}s …")
     try:
-        ws = open_fn()
+        runner = open_fn()
     except Exception as exc:  # noqa: BLE001
         print(f"[{title}] failed: {type(exc).__name__}: {exc}")
         return
 
-    thread = threading.Thread(target=ws.run_forever, daemon=True)
+    target = getattr(runner, "start_streaming", None) or runner.run_forever
+    thread = threading.Thread(target=target, daemon=True)
     thread.start()
     time.sleep(duration_s)
 
     print(f"[{title}] {duration_s}s elapsed - unsubscribing and closing.")
-    close_fn(ws)
+    close_fn(runner)
     thread.join(timeout=5)
 
 
